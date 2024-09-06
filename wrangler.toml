@@ -1,6 +1,6 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "config-rl-worker"
-main = "src/config.js"
+main = "src/index.js"
 compatibility_date = "2024-09-03"
 compatibility_flags = ["nodejs_compat"]
 
@@ -14,12 +14,12 @@ workers_dev = true
 
 [durable_objects]
 bindings = [
-  { name = "CONFIGURATION_DO", class_name = "ConfigurationDO" }
+  { name = "CONFIG_STORAGE", class_name = "ConfigStorage" }
 ]
 
 [[migrations]]
 tag = "v1"
-new_classes = ["ConfigurationDO"]
+new_classes = ["ConfigStorage"]
 
 # Automatically place your workloads in an optimal location to minimize latency.
 # If you are running back-end logic in a Worker, running it closer to your back-end infrastructure
