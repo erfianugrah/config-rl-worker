@@ -6,6 +6,8 @@ const html = `
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rate Limit Configuration</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@popperjs/core@2"></script>
+    <script src="https://unpkg.com/tippy.js@6"></script>
 </head>
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
@@ -13,32 +15,44 @@ const html = `
         <form id="configForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
             <div class="mb-6">
                 <h2 class="text-xl font-semibold mb-4">Rate Limit</h2>
-                <div class="flex space-x-4">
-                    <div class="w-1/2">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="limit">
                             Request Limit:
                         </label>
                         <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="limit" name="rateLimit.limit" type="number" required>
                     </div>
-                    <div class="w-1/2">
+                    <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="period">
                             Time Period (seconds):
                         </label>
                         <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="period" name="rateLimit.period" type="number" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="ipLimit">
+                            IP Request Limit:
+                        </label>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ipLimit" name="rateLimit.ipLimit" type="number">
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="ipPeriod">
+                            IP Time Period (seconds):
+                        </label>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ipPeriod" name="rateLimit.ipPeriod" type="number">
                     </div>
                 </div>
             </div>
 
             <div class="mb-6">
                 <h2 class="text-xl font-semibold mb-4">Request Matching</h2>
-                <div class="flex space-x-4">
-                    <div class="w-1/2">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="hostname">
                             Hostname:
                         </label>
                         <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="hostname" name="requestMatch.hostname" type="text" required>
                     </div>
-                    <div class="w-1/2">
+                    <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="path">
                             Path (leave empty to match all paths):
                         </label>
@@ -48,36 +62,30 @@ const html = `
             </div>
 
             <div class="mb-6">
-                <h2 class="text-xl font-semibold mb-4">Fingerprint</h2>
-                <div class="flex space-x-4">
-                    <div class="w-1/2">
-                        <h3 class="text-lg font-medium mb-2">Baseline Parameters</h3>
-                        <select id="baselineFingerprint" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2">
-                            <option value="cf.tlsVersion">TLS Version</option>
-                            <option value="cf.tlsCipher">TLS Cipher</option>
-                            <option value="cf.ja4">JA4</option>
-                            <option value="clientIP">Client IP</option>
-                            <option value="cf.asn">ASN</option>
-                            <option value="user-agent">User Agent</option>
-                            <option value="cf-device-type">Device Type</option>
-                        </select>
-                        <button type="button" id="addBaseline" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Add</button>
-                        <div id="baselineList" class="mt-4 p-2 border rounded min-h-[100px]"></div>
-                    </div>
-                    <div class="w-1/2">
-                        <h3 class="text-lg font-medium mb-2">Additional Parameters</h3>
-                        <select id="additionalFingerprint" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2">
-                            <option value="cf.asn">ASN</option>
-                            <option value="user-agent">User Agent</option>
-                            <option value="cf-device-type">Device Type</option>
-                            <option value="cf.tlsVersion">TLS Version</option>
-                            <option value="cf.tlsCipher">TLS Cipher</option>
-                            <option value="cf.ja4">JA4</option>
-                            <option value="clientIP">Client IP</option>
-                        </select>
-                        <button type="button" id="addAdditional" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Add</button>
-                        <div id="additionalList" class="mt-4 p-2 border rounded min-h-[100px]"></div>
-                    </div>
+                <h2 class="text-xl font-semibold mb-4">Fingerprint Parameters</h2>
+                <div class="mb-4">
+                    <p class="text-sm text-gray-600">Client IP is always included by default.</p>
+                </div>
+                <div>
+                    <select id="fingerprintParam" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2">
+                        <option value="cf.tlsVersion">TLS Version</option>
+                        <option value="cf.tlsCipher">TLS Cipher</option>
+                        <option value="cf.ja4">JA4</option>
+                        <option value="cf.asn">ASN</option>
+                        <option value="user-agent">User Agent</option>
+                        <option value="cf-device-type">Device Type</option>
+                        <option value="cf.tlsClientRandom">TLS Client Random</option>
+                        <option value="cf.tlsClientHelloLength">TLS Client Hello Length</option>
+                        <option value="cf.tlsExportedAuthenticator.clientFinished">TLS Client Finished</option>
+                        <option value="cf.tlsExportedAuthenticator.clientHandshake">TLS Client Handshake</option>
+                        <option value="cf.botManagement.score">Bot Score</option>
+                        <option value="cf.botManagement.staticResource">Static Resource</option>
+                        <option value="cf.botManagement.verifiedBot">Verified Bot</option>
+                        <option value="cf.clientAcceptEncoding">Client Accept Encoding</option>
+                        <option value="cf.httpProtocol">HTTP Protocol</option>
+                    </select>
+                    <button type="button" id="addFingerprint" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">Add</button>
+                    <div id="fingerprintList" class="mt-4 p-2 border rounded min-h-[100px]"></div>
                 </div>
             </div>
 
@@ -95,10 +103,26 @@ const html = `
 
 const script = `
 <script>
-    const baselineList = document.getElementById('baselineList');
-    const additionalList = document.getElementById('additionalList');
-    const baselineSelect = document.getElementById('baselineFingerprint');
-    const additionalSelect = document.getElementById('additionalFingerprint');
+    const fingerprintList = document.getElementById('fingerprintList');
+    const fingerprintSelect = document.getElementById('fingerprintParam');
+
+    const tooltips = {
+        'cf.tlsVersion': 'The TLS version used for the connection',
+        'cf.tlsCipher': 'The cipher suite used for the TLS connection',
+        'cf.ja4': 'JA4 fingerprint, similar to JA3 but more comprehensive',
+        'cf.asn': 'Autonomous System Number of the client',
+        'user-agent': 'User agent string from the client',
+        'cf-device-type': 'Type of device (desktop, mobile, etc.)',
+        'cf.tlsClientRandom': '32-byte random value provided by the client in TLS handshake',
+        'cf.tlsClientHelloLength': 'Length of the client hello message in TLS handshake',
+        'cf.tlsExportedAuthenticator.clientFinished': 'TLS exported authenticator for client finished',
+        'cf.tlsExportedAuthenticator.clientHandshake': 'TLS exported authenticator for client handshake',
+        'cf.botManagement.score': 'Bot score from Cloudflare Bot Management',
+        'cf.botManagement.staticResource': 'Indicates if the request is for a static resource',
+        'cf.botManagement.verifiedBot': 'Indicates if the request is from a verified bot',
+        'cf.clientAcceptEncoding': 'Accept-Encoding header from the client',
+        'cf.httpProtocol': 'HTTP protocol version used for the request'
+    };
 
     function addToList(list, value) {
         const item = document.createElement('div');
@@ -109,10 +133,14 @@ const script = `
         \`;
         item.querySelector('button').onclick = () => list.removeChild(item);
         list.appendChild(item);
+
+        tippy(item.querySelector('span'), {
+            content: tooltips[value] || 'No description available',
+            placement: 'top',
+        });
     }
 
-    document.getElementById('addBaseline').onclick = () => addToList(baselineList, baselineSelect.value);
-    document.getElementById('addAdditional').onclick = () => addToList(additionalList, additionalSelect.value);
+    document.getElementById('addFingerprint').onclick = () => addToList(fingerprintList, fingerprintSelect.value);
 
     document.getElementById('configForm').addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -133,8 +161,7 @@ const script = `
 
         // Add fingerprint configuration
         config.fingerprint = {
-            baseline: Array.from(baselineList.children).map(child => child.textContent.trim()),
-            additional: Array.from(additionalList.children).map(child => child.textContent.trim())
+            parameters: ['clientIP', ...Array.from(fingerprintList.children).map(child => child.querySelector('span').textContent.trim())]
         };
 
         try {
@@ -169,15 +196,17 @@ const script = `
         }
 
         // Load fingerprint configuration
-        if (config.fingerprint) {
-            if (config.fingerprint.baseline) {
-                config.fingerprint.baseline.forEach(param => addToList(baselineList, param));
-            }
-            if (config.fingerprint.additional) {
-                config.fingerprint.additional.forEach(param => addToList(additionalList, param));
-            }
+        if (config.fingerprint && config.fingerprint.parameters) {
+            config.fingerprint.parameters.forEach(param => {
+                if (param !== 'clientIP') {
+                    addToList(fingerprintList, param);
+                }
+            });
         }
     });
+
+    // Initialize tooltips
+    tippy('[data-tippy-content]');
 </script>
 `;
 
