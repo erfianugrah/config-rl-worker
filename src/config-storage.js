@@ -13,7 +13,7 @@ export class ConfigStorage {
       return new Response('Config saved', { status: 200 });
     } else if (request.method === 'GET' && path === '/config') {
       const config = await this.state.storage.get('config');
-      return new Response(config || '{}', {
+      return new Response(config || '{"rules":[]}', {
         headers: { 'Content-Type': 'application/json' },
       });
     }
