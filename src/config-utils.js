@@ -1,24 +1,18 @@
+import {
+  LABELS,
+  MESSAGES,
+  API_ENDPOINTS,
+  HTTP_METHODS,
+  CONTENT_TYPES,
+  FINGERPRINT_PARAMS,
+  FINGERPRINT_TOOLTIPS,
+} from './config-variables.js';
+
 export const uiScript = `
 <script>
     let ruleCounter = 0;
 
-    const tooltips = {
-        'cf.tlsVersion': 'The TLS version used for the connection',
-        'cf.tlsCipher': 'The cipher suite used for the TLS connection',
-        'cf.ja4': 'JA4 fingerprint, similar to JA3 but more comprehensive',
-        'cf.asn': 'Autonomous System Number of the client',
-        'user-agent': 'User agent string from the client',
-        'cf-device-type': 'Type of device (desktop, mobile, etc.)',
-        'cf.tlsClientRandom': '32-byte random value provided by the client in TLS handshake',
-        'cf.tlsClientHelloLength': 'Length of the client hello message in TLS handshake',
-        'cf.tlsExportedAuthenticator.clientFinished': 'TLS exported authenticator for client finished',
-        'cf.tlsExportedAuthenticator.clientHandshake': 'TLS exported authenticator for client handshake',
-        'cf.botManagement.score': 'Bot score from Cloudflare Bot Management',
-        'cf.botManagement.staticResource': 'Indicates if the request is for a static resource',
-        'cf.botManagement.verifiedBot': 'Indicates if the request is from a verified bot',
-        'cf.clientAcceptEncoding': 'Accept-Encoding header from the client',
-        'cf.httpProtocol': 'HTTP protocol version used for the request'
-    };
+    const tooltips = ${JSON.stringify(FINGERPRINT_TOOLTIPS)};
 
     function createRuleForm() {
         ruleCounter++;
@@ -28,19 +22,19 @@ export const uiScript = `
             <h3 class="text-lg font-semibold mb-4">Rule \${ruleCounter}</h3>
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleOrder\${ruleCounter}">
-                    Order:
+                    ${LABELS.ORDER}
                 </label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleOrder\${ruleCounter}" name="rules[\${ruleCounter}].order" type="number" value="\${ruleCounter}" required>
             </div>
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleName\${ruleCounter}">
-                    Rule Name:
+                    ${LABELS.RULE_NAME}
                 </label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleName\${ruleCounter}" name="rules[\${ruleCounter}].name" type="text" required>
             </div>
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleDescription\${ruleCounter}">
-                    Description:
+                    ${LABELS.DESCRIPTION}
                 </label>
                 <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleDescription\${ruleCounter}" name="rules[\${ruleCounter}].description"></textarea>
             </div>
@@ -49,13 +43,13 @@ export const uiScript = `
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="limit\${ruleCounter}">
-                            Request Limit:
+                            ${LABELS.REQUEST_LIMIT}
                         </label>
                         <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="limit\${ruleCounter}" name="rules[\${ruleCounter}].rateLimit.limit" type="number" required>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="period\${ruleCounter}">
-                            Time Period (seconds):
+                            ${LABELS.TIME_PERIOD}
                         </label>
                         <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="period\${ruleCounter}" name="rules[\${ruleCounter}].rateLimit.period" type="number" required>
                     </div>
@@ -66,40 +60,26 @@ export const uiScript = `
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="hostname\${ruleCounter}">
-                            Hostname:
+                            ${LABELS.HOSTNAME}
                         </label>
                         <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="hostname\${ruleCounter}" name="rules[\${ruleCounter}].requestMatch.hostname" type="text" required>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="path\${ruleCounter}">
-                            Path (leave empty to match all paths):
+                            ${LABELS.PATH}
                         </label>
                         <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="path\${ruleCounter}" name="rules[\${ruleCounter}].requestMatch.path" type="text">
                     </div>
                 </div>
             </div>
             <div class="mb-4">
-                <h4 class="text-md font-semibold mb-2">Fingerprint Parameters</h4>
+                <h4 class="text-md font-semibold mb-2">${LABELS.FINGERPRINT_PARAMS}</h4>
                 <div class="mb-4">
-                    <p class="text-sm text-gray-600">Client IP is always included by default.</p>
+                    <p class="text-sm text-gray-600">${MESSAGES.CLIENT_IP_INCLUDED}</p>
                 </div>
                 <div>
                     <select id="fingerprintParam\${ruleCounter}" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2">
-                        <option value="cf.tlsVersion">TLS Version</option>
-                        <option value="cf.tlsCipher">TLS Cipher</option>
-                        <option value="cf.ja4">JA4</option>
-                        <option value="cf.asn">ASN</option>
-                        <option value="user-agent">User Agent</option>
-                        <option value="cf-device-type">Device Type</option>
-                        <option value="cf.tlsClientRandom">TLS Client Random</option>
-                        <option value="cf.tlsClientHelloLength">TLS Client Hello Length</option>
-                        <option value="cf.tlsExportedAuthenticator.clientFinished">TLS Client Finished</option>
-                        <option value="cf.tlsExportedAuthenticator.clientHandshake">TLS Client Handshake</option>
-                        <option value="cf.botManagement.score">Bot Score</option>
-                        <option value="cf.botManagement.staticResource">Static Resource</option>
-                        <option value="cf.botManagement.verifiedBot">Verified Bot</option>
-                        <option value="cf.clientAcceptEncoding">Client Accept Encoding</option>
-                        <option value="cf.httpProtocol">HTTP Protocol</option>
+                        ${FINGERPRINT_PARAMS.map((param) => `<option value="${param.value}">${param.label}</option>`).join('')}
                     </select>
                     <button type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="addFingerprint(\${ruleCounter})">Add</button>
                     <div id="fingerprintList\${ruleCounter}" class="mt-4 p-2 border rounded min-h-[100px]"></div>
@@ -134,7 +114,7 @@ export const uiScript = `
         list.appendChild(item);
 
         const tooltip = document.createElement('div');
-        tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rounded shadow-lg';
+tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rounded shadow-lg';
         tooltip.textContent = tooltips[value] || 'No description available';
         item.appendChild(tooltip);
 
@@ -180,26 +160,26 @@ export const uiScript = `
             config.rules = config.rules.filter(Boolean).sort((a, b) => parseInt(a.order) - parseInt(b.order));
 
             try {
-                const response = await fetch('/config', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                const response = await fetch('${API_ENDPOINTS.CONFIG}', {
+                    method: '${HTTP_METHODS.POST}',
+                    headers: { 'Content-Type': '${CONTENT_TYPES.JSON}' },
                     body: JSON.stringify(config)
                 });
 
                 if (response.ok) {
-                    document.getElementById('message').textContent = 'Configuration saved successfully!';
+                    document.getElementById('message').textContent = '${MESSAGES.CONFIG_SAVED}';
                     document.getElementById('message').className = 'mt-4 text-center font-bold text-green-600';
                 } else {
                     throw new Error('Failed to save configuration');
                 }
             } catch (error) {
-                document.getElementById('message').textContent = 'Error: ' + error.message;
+                document.getElementById('message').textContent = '${MESSAGES.SAVE_ERROR}' + error.message;
                 document.getElementById('message').className = 'mt-4 text-center font-bold text-red-600';
             }
         };
 
         // Load existing configuration
-        fetch('/config').then(response => response.json()).then(config => {
+        fetch('${API_ENDPOINTS.CONFIG}').then(response => response.json()).then(config => {
             if (config.rules && config.rules.length > 0) {
                 // Clear existing rules before populating
                 document.getElementById('rulesContainer').innerHTML = '';
@@ -228,7 +208,7 @@ export const uiScript = `
             }
         }).catch(error => {
             console.error('Error loading configuration:', error);
-            document.getElementById('message').textContent = 'Error loading configuration';
+            document.getElementById('message').textContent = '${MESSAGES.LOAD_ERROR}';
             document.getElementById('message').className = 'mt-4 text-center font-bold text-red-600';
         });
     });
