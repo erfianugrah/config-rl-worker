@@ -6,57 +6,220 @@ import {
   CONTENT_TYPES,
   FINGERPRINT_PARAMS,
   FINGERPRINT_TOOLTIPS,
+  ADD_RULE_BUTTON_TEXT,
 } from './config-variables.js';
 
 export const uiScript = `
 <script>
     let ruleCounter = 0;
-    let dragSrcEl = null;
+    let currentRules = [];
+    let draggedItem = null;
 
     const tooltips = ${JSON.stringify(FINGERPRINT_TOOLTIPS)};
 
-    function createRuleForm(rule = {}) {
-        ruleCounter++;
+    function createRuleModal(rule, index) {
+        const modal = document.createElement('div');
+        modal.className = 'bg-white shadow-md rounded px-6 py-4 mb-4 cursor-move transition-all duration-200 hover:shadow-lg';
+        modal.setAttribute('data-id', index);
+        modal.setAttribute('draggable', 'true');
+        modal.innerHTML = \`
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-lg font-semibold text-gray-800">\${rule.name}</h3>
+                <span class="text-gray-500 opacity-50 hover:opacity-100 transition-opacity duration-200">☰</span>
+            </div>
+            <p class="text-sm text-gray-600 mb-4">\${rule.description || 'No description'}</p>
+            <div class="flex justify-between">
+                <button class="viewRule bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded text-sm transition-colors duration-200">View</button>
+                <button class="editRule bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded text-sm transition-colors duration-200">Edit</button>
+                <button class="deleteRule bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded text-sm transition-colors duration-200">Delete</button>
+            </div>
+        \`;
+
+        modal.querySelector('.viewRule').onclick = () => viewRule(rule);
+        modal.querySelector('.editRule').onclick = () => editRule(rule, index);
+        modal.querySelector('.deleteRule').onclick = () => deleteRule(index);
+
+        modal.addEventListener('dragstart', dragStart);
+        modal.addEventListener('dragover', dragOver);
+        modal.addEventListener('drop', drop);
+        modal.addEventListener('dragend', dragEnd);
+
+        return modal;
+    }
+
+    function viewRule(rule) {
+        const viewModal = document.createElement('div');
+        viewModal.className = 'fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full flex items-center justify-center';
+        viewModal.innerHTML = \`
+            <div class="relative p-8 border w-full max-w-xl shadow-lg rounded-md bg-white">
+                <h3 class="text-2xl leading-6 font-medium text-gray-900 mb-4">Rule Details</h3>
+                <pre class="text-left whitespace-pre-wrap break-words bg-gray-100 p-4 rounded">\${JSON.stringify(rule, null, 2)}</pre>
+                <button id="closeViewModal" class="mt-6 px-4 py-2 bg-blue-500 text-white text-base font-medium rounded-md w-full shadow-sm hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300 transition-colors duration-200">
+                    Close
+                </button>
+            </div>
+        \`;
+        document.body.appendChild(viewModal);
+        document.getElementById('closeViewModal').onclick = () => document.body.removeChild(viewModal);
+    }
+
+    function editRule(rule, index) {
+        document.getElementById('ruleModals').classList.add('hidden');
+        document.getElementById('addNewRule').classList.add('hidden');
+        document.getElementById('configForm').classList.remove('hidden');
+
+        document.getElementById('rulesContainer').innerHTML = '';
+        createRuleForm(rule, index);
+    }
+
+    async function deleteRule(index) {
+        if (confirm('Are you sure you want to delete this rule?')) {
+            currentRules.splice(index, 1);
+            try {
+                await saveConfiguration();
+                updateRuleModals();
+            } catch (error) {
+                console.error('Error saving configuration after delete:', error);
+                alert('Failed to delete rule. Please try again.');
+            }
+        }
+    }
+
+    function dragStart(e) {
+        draggedItem = e.target;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', e.target.getAttribute('data-id'));
+        setTimeout(() => {
+            e.target.style.opacity = '0.5';
+            e.target.style.transform = 'scale(1.05)';
+        }, 0);
+    }
+
+    function dragOver(e) {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const targetItem = e.target.closest('[draggable]');
+        if (targetItem && targetItem !== draggedItem) {
+            const rect = targetItem.getBoundingClientRect();
+            const next = (e.clientY - rect.top) / (rect.bottom - rect.top) > 0.5;
+            targetItem.parentNode.insertBefore(draggedItem, next ? targetItem.nextSibling : targetItem);
+        }
+    }
+
+    function drop(e) {
+        e.preventDefault();
+        const draggedIndex = parseInt(draggedItem.getAttribute('data-id'));
+        const targetIndex = Array.from(draggedItem.parentNode.children).indexOf(draggedItem);
+
+        if (draggedIndex !== targetIndex) {
+            const [reorderedItem] = currentRules.splice(draggedIndex, 1);
+            currentRules.splice(targetIndex, 0, reorderedItem);
+            updateDataIds();
+            saveConfiguration();
+        }
+    }
+
+    function dragEnd(e) {
+        e.target.style.opacity = '';
+        e.target.style.transform = '';
+        draggedItem = null;
+    }
+
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('[draggable]:not(.dragging)')];
+
+        return draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
+    }
+
+    function updateDataIds() {
+        const modals = document.querySelectorAll('#ruleModals > div');
+        modals.forEach((modal, index) => {
+            modal.setAttribute('data-id', index);
+        });
+    }
+
+    function updateRuleModals() {
+        const container = document.getElementById('ruleModals');
+	container.className = 'flex flex-col space-y-4 mb-8';
+        container.innerHTML = '';
+        currentRules.forEach((rule, index) => {
+            container.appendChild(createRuleModal(rule, index));
+        });
+
+        const addNewRuleButton = document.getElementById('addNewRule');
+        addNewRuleButton.className = 'bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200 mb-4';
+        addNewRuleButton.textContent = '${ADD_RULE_BUTTON_TEXT}';
+    }
+
+    async function saveConfiguration() {
+        try {
+            // Update rule orders based on their current positions
+            currentRules.forEach((rule, index) => {
+                rule.order = index + 1;
+            });
+
+            const response = await fetch('${API_ENDPOINTS.CONFIG}', {
+                method: '${HTTP_METHODS.POST}',
+                headers: { 'Content-Type': '${CONTENT_TYPES.JSON}' },
+                body: JSON.stringify({ rules: currentRules })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to save configuration');
+            }
+
+            document.getElementById('message').textContent = '${MESSAGES.CONFIG_SAVED}';
+            document.getElementById('message').className = 'mt-4 text-center font-bold text-green-600';
+        } catch (error) {
+            console.error('Error saving configuration:', error);
+            throw error;
+        }
+    }
+
+    function createRuleForm(rule = {}, editIndex = null) {
+        const ruleIndex = editIndex !== null ? editIndex : currentRules.length;
         const ruleForm = document.createElement('div');
         ruleForm.className = 'bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4';
-        ruleForm.setAttribute('data-id', ruleCounter);
-        ruleForm.draggable = true;
+        ruleForm.setAttribute('data-id', ruleIndex);
         ruleForm.innerHTML = \`
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold">Rule \${ruleCounter}</h3>
-                <div class="flex items-center">
-                    <span class="mr-2 cursor-move" draggable="true">☰</span>
-                    <button type="button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-1 px-2 rounded-l focus:outline-none focus:shadow-outline" onclick="moveRule(this, -1)">↑</button>
-                    <button type="button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-1 px-2 rounded-r focus:outline-none focus:shadow-outline" onclick="moveRule(this, 1)">↓</button>
-                </div>
-            </div>
-            <input type="hidden" name="rules[\${ruleCounter}].order" value="\${ruleCounter}">
             <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleName\${ruleCounter}">
+                <h3 class="text-lg font-semibold">Rule \${ruleIndex + 1}</h3>
+            </div>
+            <input type="hidden" name="rules[\${ruleIndex}].order" value="\${ruleIndex + 1}">
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleName\${ruleIndex}">
                     ${LABELS.RULE_NAME}
                 </label>
-                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleName\${ruleCounter}" name="rules[\${ruleCounter}].name" type="text" value="\${rule.name || ''}" required>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleName\${ruleIndex}" name="rules[\${ruleIndex}].name" type="text" value="\${rule.name || ''}" required>
             </div>
             <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleDescription\${ruleCounter}">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleDescription\${ruleIndex}">
                     ${LABELS.DESCRIPTION}
                 </label>
-                <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleDescription\${ruleCounter}" name="rules[\${ruleCounter}].description">\${rule.description || ''}</textarea>
+                <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleDescription\${ruleIndex}" name="rules[\${ruleIndex}].description">\${rule.description || ''}</textarea>
             </div>
             <div class="mb-4">
                 <h4 class="text-md font-semibold mb-2">Rate Limit</h4>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="limit\${ruleCounter}">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="limit\${ruleIndex}">
                             ${LABELS.REQUEST_LIMIT}
                         </label>
-                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="limit\${ruleCounter}" name="rules[\${ruleCounter}].rateLimit.limit" type="number" value="\${rule.rateLimit?.limit || ''}" required>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="limit\${ruleIndex}" name="rules[\${ruleIndex}].rateLimit.limit" type="number" value="\${rule.rateLimit?.limit || ''}" required>
                     </div>
                     <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="period\${ruleCounter}">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="period\${ruleIndex}">
                             ${LABELS.TIME_PERIOD}
                         </label>
-                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="period\${ruleCounter}" name="rules[\${ruleCounter}].rateLimit.period" type="number" value="\${rule.rateLimit?.period || ''}" required>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="period\${ruleIndex}" name="rules[\${ruleIndex}].rateLimit.period" type="number" value="\${rule.rateLimit?.period || ''}" required>
                     </div>
                 </div>
             </div>
@@ -64,16 +227,16 @@ export const uiScript = `
                 <h4 class="text-md font-semibold mb-2">Request Matching</h4>
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="hostname\${ruleCounter}">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="hostname\${ruleIndex}">
                             ${LABELS.HOSTNAME}
                         </label>
-                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="hostname\${ruleCounter}" name="rules[\${ruleCounter}].requestMatch.hostname" type="text" value="\${rule.requestMatch?.hostname || ''}" required>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="hostname\${ruleIndex}" name="rules[\${ruleIndex}].requestMatch.hostname" type="text" value="\${rule.requestMatch?.hostname || ''}" required>
                     </div>
                     <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="path\${ruleCounter}">
+                        <label class="block text-gray-700 text-sm font-bold mb-2" for="path\${ruleIndex}">
                             ${LABELS.PATH}
                         </label>
-                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="path\${ruleCounter}" name="rules[\${ruleCounter}].requestMatch.path" type="text" value="\${rule.requestMatch?.path || ''}">
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="path\${ruleIndex}" name="rules[\${ruleIndex}].requestMatch.path" type="text" value="\${rule.requestMatch?.path || ''}">
                     </div>
                 </div>
             </div>
@@ -83,96 +246,21 @@ export const uiScript = `
                     <p class="text-sm text-gray-600">${MESSAGES.CLIENT_IP_INCLUDED}</p>
                 </div>
                 <div>
-                    <select id="fingerprintParam\${ruleCounter}" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2">
+                    <select id="fingerprintParam\${ruleIndex}" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2">
                         ${FINGERPRINT_PARAMS.map((param) => `<option value="${param.value}">${param.label}</option>`).join('')}
                     </select>
-                    <button type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="addFingerprint(\${ruleCounter})">Add</button>
-                    <div id="fingerprintList\${ruleCounter}" class="mt-4 p-2 border rounded min-h-[100px]"></div>
+                    <button type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="addFingerprint(\${ruleIndex})">Add</button>
+                    <div id="fingerprintList\${ruleIndex}" class="mt-4 p-2 border rounded min-h-[100px]"></div>
                 </div>
             </div>
-            <button type="button" class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="removeRule(this)">
-                Remove Rule
-            </button>
         \`;
-        ruleForm.addEventListener('dragstart', handleDragStart, false);
-        ruleForm.addEventListener('dragenter', handleDragEnter, false);
-        ruleForm.addEventListener('dragover', handleDragOver, false);
-        ruleForm.addEventListener('dragleave', handleDragLeave, false);
-        ruleForm.addEventListener('drop', handleDrop, false);
-        ruleForm.addEventListener('dragend', handleDragEnd, false);
         document.getElementById('rulesContainer').appendChild(ruleForm);
 
         // Populate fingerprint parameters if they exist
         if (rule.fingerprint && rule.fingerprint.parameters) {
-            const fingerprintList = ruleForm.querySelector(\`#fingerprintList\${ruleCounter}\`);
-            rule.fingerprint.parameters.forEach(param => addToList(fingerprintList, param, ruleCounter));
+            const fingerprintList = ruleForm.querySelector(\`#fingerprintList\${ruleIndex}\`);
+            rule.fingerprint.parameters.forEach(param => addToList(fingerprintList, param, ruleIndex));
         }
-
-        updateRuleOrder();
-    }
-
-    function removeRule(button) {
-        button.closest('[data-id]').remove();
-        updateRuleOrder();
-    }
-
-    function moveRule(button, direction) {
-        const ruleElement = button.closest('[data-id]');
-        if (direction === -1 && ruleElement.previousElementSibling) {
-            ruleElement.parentNode.insertBefore(ruleElement, ruleElement.previousElementSibling);
-        } else if (direction === 1 && ruleElement.nextElementSibling) {
-            ruleElement.parentNode.insertBefore(ruleElement.nextElementSibling, ruleElement);
-        }
-        updateRuleOrder();
-    }
-
-    function updateRuleOrder() {
-        document.querySelectorAll('#rulesContainer > div').forEach((rule, index) => {
-            rule.querySelector('input[name$="].order"]').value = index + 1;
-            rule.querySelector('h3').textContent = \`Rule \${index + 1}\`;
-        });
-    }
-
-    function handleDragStart(e) {
-        this.style.opacity = '0.4';
-        dragSrcEl = this;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', this.innerHTML);
-    }
-
-    function handleDragOver(e) {
-        if (e.preventDefault) {
-            e.preventDefault();
-        }
-        e.dataTransfer.dropEffect = 'move';
-        return false;
-    }
-
-    function handleDragEnter(e) {
-        this.classList.add('bg-gray-200');
-    }
-
-    function handleDragLeave(e) {
-        this.classList.remove('bg-gray-200');
-    }
-
-    function handleDrop(e) {
-        if (e.stopPropagation) {
-            e.stopPropagation();
-        }
-        if (dragSrcEl != this) {
-            dragSrcEl.innerHTML = this.innerHTML;
-            this.innerHTML = e.dataTransfer.getData('text/html');
-        }
-        return false;
-    }
-
-    function handleDragEnd(e) {
-        this.style.opacity = '1';
-        document.querySelectorAll('#rulesContainer > div').forEach(function (item) {
-            item.classList.remove('bg-gray-200');
-        });
-        updateRuleOrder();
     }
 
     function addFingerprint(ruleIndex) {
@@ -193,7 +281,7 @@ export const uiScript = `
         list.appendChild(item);
 
         const tooltip = document.createElement('div');
-        tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rounded shadow-lg';
+tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rounded shadow-lg';
         tooltip.textContent = tooltips[value] || 'No description available';
         item.appendChild(tooltip);
 
@@ -202,33 +290,34 @@ export const uiScript = `
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('addRule').onclick = () => createRuleForm();
+        document.getElementById('addNewRule').onclick = () => {
+            document.getElementById('ruleModals').classList.add('hidden');
+            document.getElementById('addNewRule').classList.add('hidden');
+            document.getElementById('configForm').classList.remove('hidden');
+            document.getElementById('rulesContainer').innerHTML = '';
+            createRuleForm();
+        };
 
-        document.addEventListener('keydown', (e) => {
-            if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-                e.preventDefault();
-                const activeElement = document.activeElement;
-                const ruleElement = activeElement.closest('[data-id]');
-                if (ruleElement) {
-                    moveRule(activeElement, e.key === 'ArrowUp' ? -1 : 1);
-                }
-            }
-        });
+        document.getElementById('addNewRule').textContent = '${ADD_RULE_BUTTON_TEXT}';
+
+        document.getElementById('cancelEdit').onclick = () => {
+            document.getElementById('ruleModals').classList.remove('hidden');
+            document.getElementById('addNewRule').classList.remove('hidden');
+            document.getElementById('configForm').classList.add('hidden');
+        };
 
         document.getElementById('configForm').onsubmit = async (e) => {
             e.preventDefault();
             const formData = new FormData(e.target);
-            const config = {
-                rules: []
-            };
+            const newRule = {};
+
             for (let [key, value] of formData.entries()) {
                 if (key.startsWith('rules[')) {
                     const match = key.match(/rules\\[(\\d+)\\]\\.(.+)/);
                     if (match) {
-                        const [, index, path] = match;
-                        if (!config.rules[index]) config.rules[index] = {};
+                        const [, , path] = match;
                         const keys = path.split('.');
-                        let current = config.rules[index];
+                        let current = newRule;
                         for (let i = 0; i < keys.length; i++) {
                             if (i === keys.length - 1) {
                                 if (keys[i] === 'parameters[]') {
@@ -246,21 +335,19 @@ export const uiScript = `
                 }
             }
 
-            config.rules = config.rules.filter(Boolean).sort((a, b) => parseInt(a.order) - parseInt(b.order));
+            const editIndex = parseInt(document.querySelector('#rulesContainer > div').getAttribute('data-id'));
+            if (!isNaN(editIndex) && editIndex < currentRules.length) {
+                currentRules[editIndex] = newRule;
+            } else {
+                currentRules.push(newRule);
+            }
 
             try {
-                const response = await fetch('${API_ENDPOINTS.CONFIG}', {
-                    method: '${HTTP_METHODS.POST}',
-                    headers: { 'Content-Type': '${CONTENT_TYPES.JSON}' },
-                    body: JSON.stringify(config)
-                });
-
-                if (response.ok) {
-                    document.getElementById('message').textContent = '${MESSAGES.CONFIG_SAVED}';
-                    document.getElementById('message').className = 'mt-4 text-center font-bold text-green-600';
-                } else {
-                    throw new Error('Failed to save configuration');
-                }
+                await saveConfiguration();
+                updateRuleModals();
+                document.getElementById('ruleModals').classList.remove('hidden');
+                document.getElementById('addNewRule').classList.remove('hidden');
+                document.getElementById('configForm').classList.add('hidden');
             } catch (error) {
                 document.getElementById('message').textContent = '${MESSAGES.SAVE_ERROR}' + error.message;
                 document.getElementById('message').className = 'mt-4 text-center font-bold text-red-600';
@@ -270,13 +357,11 @@ export const uiScript = `
         // Load existing configuration
         fetch('${API_ENDPOINTS.CONFIG}').then(response => response.json()).then(config => {
             if (config.rules && config.rules.length > 0) {
-                document.getElementById('rulesContainer').innerHTML = '';
-                ruleCounter = 0;
-                config.rules.forEach((rule) => {
-                    createRuleForm(rule);
-                });
+                currentRules = config.rules.sort((a, b) => a.order - b.order);
+                ruleCounter = currentRules.length;
+                updateRuleModals();
             } else {
-createRuleForm();
+                ruleCounter = 0;
             }
         }).catch(error => {
             console.error('Error loading configuration:', error);
@@ -284,114 +369,5 @@ createRuleForm();
             document.getElementById('message').className = 'mt-4 text-center font-bold text-red-600';
         });
     });
-
-    // Helper function to get the next sibling Element
-    function getNextSibling(elem, selector) {
-        var sibling = elem.nextElementSibling;
-        if (!selector) return sibling;
-        while (sibling) {
-            if (sibling.matches(selector)) return sibling;
-            sibling = sibling.nextElementSibling;
-        }
-    };
-
-    // Helper function to get the previous sibling Element
-    function getPreviousSibling(elem, selector) {
-        var sibling = elem.previousElementSibling;
-        if (!selector) return sibling;
-        while (sibling) {
-            if (sibling.matches(selector)) return sibling;
-            sibling = sibling.previousElementSibling;
-        }
-    };
-
-    // Add event delegation for dynamically added elements
-    document.getElementById('rulesContainer').addEventListener('click', function(e) {
-        if (e.target && e.target.nodeName == "BUTTON") {
-            if (e.target.textContent === "↑") {
-                moveRule(e.target, -1);
-            } else if (e.target.textContent === "↓") {
-                moveRule(e.target, 1);
-            } else if (e.target.textContent === "Remove Rule") {
-                removeRule(e.target);
-            }
-        }
-    });
-
-    // Update the moveRule function to work with the new structure
-    function moveRule(button, direction) {
-        const ruleElement = button.closest('[data-id]');
-        if (direction === -1) {
-            const prevSibling = getPreviousSibling(ruleElement, '[data-id]');
-            if (prevSibling) {
-                ruleElement.parentNode.insertBefore(ruleElement, prevSibling);
-            }
-        } else if (direction === 1) {
-            const nextSibling = getNextSibling(ruleElement, '[data-id]');
-            if (nextSibling) {
-                ruleElement.parentNode.insertBefore(nextSibling, ruleElement);
-            }
-        }
-        updateRuleOrder();
-    }
-
-    // Update drag and drop handlers to work with the new structure
-    function handleDragStart(e) {
-        dragSrcEl = this;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/html', this.outerHTML);
-
-        this.classList.add('bg-gray-200');
-    }
-
-    function handleDragOver(e) {
-        if (e.preventDefault) {
-            e.preventDefault();
-        }
-        e.dataTransfer.dropEffect = 'move';
-        return false;
-    }
-
-    function handleDragEnter(e) {
-        this.classList.add('bg-blue-100');
-    }
-
-    function handleDragLeave(e) {
-        this.classList.remove('bg-blue-100');
-    }
-
-    function handleDrop(e) {
-        if (e.stopPropagation) {
-            e.stopPropagation();
-        }
-
-        if (dragSrcEl != this) {
-            this.parentNode.removeChild(dragSrcEl);
-            var dropHTML = e.dataTransfer.getData('text/html');
-            this.insertAdjacentHTML('beforebegin', dropHTML);
-            var dropElem = this.previousSibling;
-            addDnDHandlers(dropElem);
-        }
-        this.classList.remove('bg-blue-100');
-        updateRuleOrder();
-        return false;
-    }
-
-    function handleDragEnd(e) {
-        this.classList.remove('bg-gray-200');
-        updateRuleOrder();
-    }
-
-    function addDnDHandlers(elem) {
-        elem.addEventListener('dragstart', handleDragStart, false);
-        elem.addEventListener('dragenter', handleDragEnter, false)
-        elem.addEventListener('dragover', handleDragOver, false);
-        elem.addEventListener('dragleave', handleDragLeave, false);
-        elem.addEventListener('drop', handleDrop, false);
-        elem.addEventListener('dragend', handleDragEnd, false);
-    }
-
-    // Add drag and drop handlers to existing rules
-    document.querySelectorAll('#rulesContainer > div').forEach(addDnDHandlers);
 </script>
 `;

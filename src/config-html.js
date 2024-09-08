@@ -12,14 +12,18 @@ export const html = `
 <body class="bg-gray-100 min-h-screen">
     <div class="container mx-auto px-4 py-8">
         <h1 class="text-3xl font-bold mb-8 text-center">${UI_TITLE}</h1>
-        <form id="configForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4">
-            <button type="button" id="addRule" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mb-4">
-                ${ADD_RULE_BUTTON_TEXT}
-            </button>
+        <div id="ruleModals" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8"></div>
+        <button id="addNewRule" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mb-4">
+            ${ADD_RULE_BUTTON_TEXT}
+        </button>
+        <form id="configForm" class="bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4 hidden">
             <div id="rulesContainer" class="space-y-4"></div>
             <div class="flex items-center justify-between mt-6">
                 <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
                     ${SAVE_CONFIG_BUTTON_TEXT}
+                </button>
+                <button type="button" id="cancelEdit" class="bg-gray-500 hover:bg-gray-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
+                    Cancel
                 </button>
             </div>
         </form>
