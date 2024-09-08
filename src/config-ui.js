@@ -1,6 +1,6 @@
 // ui.js
-import { html } from './html.js';
-import { uiScript } from './ui-script.js';
+import { html } from './config-html.js';
+import { uiScript } from './config-utils.js';
 
 // Combine HTML and script
 const updatedHtml = html.replace('</body>', `${uiScript}</body>`);

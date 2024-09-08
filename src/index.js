@@ -1,4 +1,4 @@
-import { handleRequest } from './ui.js';
+import { handleRequest } from './config-ui.js';
 import { ConfigStorage } from './config-storage.js';
 
 export default {
