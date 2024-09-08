@@ -9,6 +9,16 @@ export class ConfigStorage {
 
     if (request.method === 'POST' && path === '/config') {
       const config = await request.json();
+
+      // Ensure rules have an order field
+      config.rules = config.rules.map((rule, index) => ({
+        ...rule,
+        order: rule.order || index + 1,
+      }));
+
+      // Sort rules by order before saving
+      config.rules.sort((a, b) => a.order - b.order);
+
       await this.state.storage.put('config', JSON.stringify(config));
       return new Response('Config saved', { status: 200 });
     } else if (request.method === 'GET' && path === '/config') {

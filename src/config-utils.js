@@ -1,4 +1,3 @@
-// ui-script.js
 export const uiScript = `
 <script>
     let ruleCounter = 0;
@@ -27,6 +26,12 @@ export const uiScript = `
         ruleForm.className = 'bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4';
         ruleForm.innerHTML = \`
             <h3 class="text-lg font-semibold mb-4">Rule \${ruleCounter}</h3>
+            <div class="mb-4">
+                <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleOrder\${ruleCounter}">
+                    Order:
+                </label>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleOrder\${ruleCounter}" name="rules[\${ruleCounter}].order" type="number" value="\${ruleCounter}" required>
+            </div>
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleName\${ruleCounter}">
                     Rule Name:
@@ -128,10 +133,13 @@ export const uiScript = `
         item.querySelector('button').onclick = () => list.removeChild(item);
         list.appendChild(item);
 
-        tippy(item.querySelector('span'), {
-            content: tooltips[value] || 'No description available',
-            placement: 'top',
-        });
+        const tooltip = document.createElement('div');
+        tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rounded shadow-lg';
+        tooltip.textContent = tooltips[value] || 'No description available';
+        item.appendChild(tooltip);
+
+        item.querySelector('span').onmouseenter = () => tooltip.classList.remove('hidden');
+        item.querySelector('span').onmouseleave = () => tooltip.classList.add('hidden');
     }
 
     document.addEventListener('DOMContentLoaded', () => {
@@ -168,8 +176,8 @@ export const uiScript = `
                 }
             }
 
-            // Remove empty slots from the rules array
-            config.rules = config.rules.filter(Boolean);
+            // Remove empty slots from the rules array and sort by order
+            config.rules = config.rules.filter(Boolean).sort((a, b) => parseInt(a.order) - parseInt(b.order));
 
             try {
                 const response = await fetch('/config', {
@@ -193,15 +201,20 @@ export const uiScript = `
         // Load existing configuration
         fetch('/config').then(response => response.json()).then(config => {
             if (config.rules && config.rules.length > 0) {
-                config.rules.forEach((rule, index) => {
+                // Clear existing rules before populating
+                document.getElementById('rulesContainer').innerHTML = '';
+                ruleCounter = 0;
+                config.rules.forEach((rule) => {
                     createRuleForm();
+                    document.getElementById(\`ruleName\${ruleCounter}\`).value = rule.name || '';
+                    document.getElementById(\`ruleDescription\${ruleCounter}\`).value = rule.description || '';
                     for (const [section, values] of Object.entries(rule)) {
                         for (const [key, value] of Object.entries(values)) {
                             if (section === 'fingerprint' && key === 'parameters') {
-                                const list = document.getElementById(\`fingerprintList\${index}\`);
-                                value.forEach(param => addToList(list, param, index));
+                                const list = document.getElementById(\`fingerprintList\${ruleCounter}\`);
+                                value.forEach(param => addToList(list, param, ruleCounter));
                             } else {
-                                const inputName = \`rules[\${index}].\${section}.\${key}\`;
+                                const inputName = \`rules[\${ruleCounter}].\${section}.\${key}\`;
                                 const input = document.querySelector(\`[name="\${inputName}"]\`);
                                 if (input) {
                                     input.value = value;
@@ -213,10 +226,11 @@ export const uiScript = `
             } else {
                 createRuleForm(); // Create an initial empty rule form
             }
+        }).catch(error => {
+            console.error('Error loading configuration:', error);
+            document.getElementById('message').textContent = 'Error loading configuration';
+            document.getElementById('message').className = 'mt-4 text-center font-bold text-red-600';
         });
     });
-
-    // Initialize tooltips
-    tippy('[data-tippy-content]');
 </script>
 `;

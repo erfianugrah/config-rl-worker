@@ -1,4 +1,3 @@
-// ui.js
 import { html } from './config-html.js';
 import { uiScript } from './config-utils.js';
 
