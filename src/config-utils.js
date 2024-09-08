@@ -7,15 +7,25 @@ import {
   FINGERPRINT_PARAMS,
   FINGERPRINT_TOOLTIPS,
   ADD_RULE_BUTTON_TEXT,
+  REQUEST_MATCH_FIELDS,
+  REQUEST_MATCH_OPERATORS,
 } from './config-variables.js';
 
 export const uiScript = `
 <script>
-    let ruleCounter = 0;
+    const LABELS = ${JSON.stringify(LABELS)};
+    const MESSAGES = ${JSON.stringify(MESSAGES)};
+    const API_ENDPOINTS = ${JSON.stringify(API_ENDPOINTS)};
+    const HTTP_METHODS = ${JSON.stringify(HTTP_METHODS)};
+    const CONTENT_TYPES = ${JSON.stringify(CONTENT_TYPES)};
+    const FINGERPRINT_PARAMS = ${JSON.stringify(FINGERPRINT_PARAMS)};
+    const FINGERPRINT_TOOLTIPS = ${JSON.stringify(FINGERPRINT_TOOLTIPS)};
+    const ADD_RULE_BUTTON_TEXT = ${JSON.stringify(ADD_RULE_BUTTON_TEXT)};
+    const REQUEST_MATCH_FIELDS = ${JSON.stringify(REQUEST_MATCH_FIELDS)};
+    const REQUEST_MATCH_OPERATORS = ${JSON.stringify(REQUEST_MATCH_OPERATORS)};
+
     let currentRules = [];
     let draggedItem = null;
-
-    const tooltips = ${JSON.stringify(FINGERPRINT_TOOLTIPS)};
 
     function createRuleModal(rule, index) {
         const modal = document.createElement('div');
@@ -125,20 +135,6 @@ export const uiScript = `
         draggedItem = null;
     }
 
-    function getDragAfterElement(container, y) {
-        const draggableElements = [...container.querySelectorAll('[draggable]:not(.dragging)')];
-
-        return draggableElements.reduce((closest, child) => {
-            const box = child.getBoundingClientRect();
-            const offset = y - box.top - box.height / 2;
-            if (offset < 0 && offset > closest.offset) {
-                return { offset: offset, element: child };
-            } else {
-                return closest;
-            }
-        }, { offset: Number.NEGATIVE_INFINITY }).element;
-    }
-
     function updateDataIds() {
         const modals = document.querySelectorAll('#ruleModals > div');
         modals.forEach((modal, index) => {
@@ -148,7 +144,7 @@ export const uiScript = `
 
     function updateRuleModals() {
         const container = document.getElementById('ruleModals');
-	container.className = 'flex flex-col space-y-4 mb-8';
+        container.className = 'flex flex-col space-y-4 mb-8';
         container.innerHTML = '';
         currentRules.forEach((rule, index) => {
             container.appendChild(createRuleModal(rule, index));
@@ -156,7 +152,7 @@ export const uiScript = `
 
         const addNewRuleButton = document.getElementById('addNewRule');
         addNewRuleButton.className = 'bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition-colors duration-200 mb-4';
-        addNewRuleButton.textContent = '${ADD_RULE_BUTTON_TEXT}';
+        addNewRuleButton.textContent = ADD_RULE_BUTTON_TEXT;
     }
 
     async function saveConfiguration() {
@@ -166,9 +162,9 @@ export const uiScript = `
                 rule.order = index + 1;
             });
 
-            const response = await fetch('${API_ENDPOINTS.CONFIG}', {
-                method: '${HTTP_METHODS.POST}',
-                headers: { 'Content-Type': '${CONTENT_TYPES.JSON}' },
+            const response = await fetch(API_ENDPOINTS.CONFIG, {
+                method: HTTP_METHODS.POST,
+                headers: { 'Content-Type': CONTENT_TYPES.JSON },
                 body: JSON.stringify({ rules: currentRules })
             });
 
@@ -176,7 +172,7 @@ export const uiScript = `
                 throw new Error('Failed to save configuration');
             }
 
-            document.getElementById('message').textContent = '${MESSAGES.CONFIG_SAVED}';
+            document.getElementById('message').textContent = MESSAGES.CONFIG_SAVED;
             document.getElementById('message').className = 'mt-4 text-center font-bold text-green-600';
         } catch (error) {
             console.error('Error saving configuration:', error);
@@ -196,13 +192,13 @@ export const uiScript = `
             <input type="hidden" name="rules[\${ruleIndex}].order" value="\${ruleIndex + 1}">
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleName\${ruleIndex}">
-                    ${LABELS.RULE_NAME}
+                    \${LABELS.RULE_NAME}
                 </label>
                 <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleName\${ruleIndex}" name="rules[\${ruleIndex}].name" type="text" value="\${rule.name || ''}" required>
             </div>
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleDescription\${ruleIndex}">
-                    ${LABELS.DESCRIPTION}
+                    \${LABELS.DESCRIPTION}
                 </label>
                 <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleDescription\${ruleIndex}" name="rules[\${ruleIndex}].description">\${rule.description || ''}</textarea>
             </div>
@@ -211,43 +207,37 @@ export const uiScript = `
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="limit\${ruleIndex}">
-                            ${LABELS.REQUEST_LIMIT}
+                            \${LABELS.REQUEST_LIMIT}
                         </label>
                         <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="limit\${ruleIndex}" name="rules[\${ruleIndex}].rateLimit.limit" type="number" value="\${rule.rateLimit?.limit || ''}" required>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="period\${ruleIndex}">
-                            ${LABELS.TIME_PERIOD}
+                            \${LABELS.TIME_PERIOD}
                         </label>
                         <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="period\${ruleIndex}" name="rules[\${ruleIndex}].rateLimit.period" type="number" value="\${rule.rateLimit?.period || ''}" required>
                     </div>
                 </div>
             </div>
             <div class="mb-4">
-                <h4 class="text-md font-semibold mb-2">Request Matching</h4>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="hostname\${ruleIndex}">
-                            ${LABELS.HOSTNAME}
-                        </label>
-                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="hostname\${ruleIndex}" name="rules[\${ruleIndex}].requestMatch.hostname" type="text" value="\${rule.requestMatch?.hostname || ''}" required>
-                    </div>
-                    <div>
-                        <label class="block text-gray-700 text-sm font-bold mb-2" for="path\${ruleIndex}">
-                            ${LABELS.PATH}
-                        </label>
-                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="path\${ruleIndex}" name="rules[\${ruleIndex}].requestMatch.path" type="text" value="\${rule.requestMatch?.path || ''}">
-                    </div>
+                <h4 class="text-md font-semibold mb-2">\${LABELS.REQUEST_MATCH}</h4>
+                <div id="requestMatchConditions\${ruleIndex}">
+                    \${(rule.requestMatch?.conditions || []).map((condition, conditionIndex) =>
+                        createConditionFields(ruleIndex, conditionIndex, condition)
+                    ).join('')}
                 </div>
+                <button type="button" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="addCondition(\${ruleIndex})">
+                    Add Condition
+                </button>
             </div>
             <div class="mb-4">
-                <h4 class="text-md font-semibold mb-2">${LABELS.FINGERPRINT_PARAMS}</h4>
+                <h4 class="text-md font-semibold mb-2">\${LABELS.FINGERPRINT_PARAMS}</h4>
                 <div class="mb-4">
-                    <p class="text-sm text-gray-600">${MESSAGES.CLIENT_IP_INCLUDED}</p>
+                    <p class="text-sm text-gray-600">\${MESSAGES.CLIENT_IP_INCLUDED}</p>
                 </div>
                 <div>
                     <select id="fingerprintParam\${ruleIndex}" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2">
-                        ${FINGERPRINT_PARAMS.map((param) => `<option value="${param.value}">${param.label}</option>`).join('')}
+                        \${FINGERPRINT_PARAMS.map((param) => \`<option value="\${param.value}">\${param.label}</option>\`).join('')}
                     </select>
                     <button type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="addFingerprint(\${ruleIndex})">Add</button>
                     <div id="fingerprintList\${ruleIndex}" class="mt-4 p-2 border rounded min-h-[100px]"></div>
@@ -261,6 +251,46 @@ export const uiScript = `
             const fingerprintList = ruleForm.querySelector(\`#fingerprintList\${ruleIndex}\`);
             rule.fingerprint.parameters.forEach(param => addToList(fingerprintList, param, ruleIndex));
         }
+    }
+
+    function createConditionFields(ruleIndex, conditionIndex, condition = {}) {
+        return \`
+            <div class="grid grid-cols-3 gap-4 mb-4" id="condition\${ruleIndex}_\${conditionIndex}">
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="field\${ruleIndex}_\${conditionIndex}">
+                        \${LABELS.CONDITION_FIELD}
+                    </label>
+                    <select class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="field\${ruleIndex}_\${conditionIndex}" name="rules[\${ruleIndex}].requestMatch.conditions[\${conditionIndex}].field" required>
+                        \${REQUEST_MATCH_FIELDS.map(field =>
+                            \`<option value="\${field.value}" \${condition.field === field.value ? 'selected' : ''}>\${field.label}</option>\`
+                        ).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="operator\${ruleIndex}_\${conditionIndex}">
+                        \${LABELS.CONDITION_OPERATOR}
+                    </label>
+                    <select class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="operator\${ruleIndex}_\${conditionIndex}" name="rules[\${ruleIndex}].requestMatch.conditions[\${conditionIndex}].operator" required>
+                        \${REQUEST_MATCH_OPERATORS.map(op =>
+                            \`<option value="\${op.value}" \${condition.operator === op.value ? 'selected' : ''}>\${op.label}</option>\`
+                        ).join('')}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2" for="value\${ruleIndex}_\${conditionIndex}">
+                        \${LABELS.CONDITION_VALUE}
+                    </label>
+                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="value\${ruleIndex}_\${conditionIndex}" name="rules[\${ruleIndex}].requestMatch.conditions[\${conditionIndex}].value" type="text" value="\${condition.value || ''}" required>
+                </div>
+            </div>
+        \`;
+    }
+
+    function addCondition(ruleIndex) {
+        const conditionsContainer = document.getElementById(\`requestMatchConditions\${ruleIndex}\`);
+        const newConditionIndex = conditionsContainer.children.length;
+        const newConditionHTML = createConditionFields(ruleIndex, newConditionIndex);
+        conditionsContainer.insertAdjacentHTML('beforeend', newConditionHTML);
     }
 
     function addFingerprint(ruleIndex) {
@@ -281,8 +311,8 @@ export const uiScript = `
         list.appendChild(item);
 
         const tooltip = document.createElement('div');
-tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rounded shadow-lg';
-        tooltip.textContent = tooltips[value] || 'No description available';
+        tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rounded shadow-lg';
+        tooltip.textContent = FINGERPRINT_TOOLTIPS[value] || 'No description available';
         item.appendChild(tooltip);
 
         item.querySelector('span').onmouseenter = () => tooltip.classList.remove('hidden');
@@ -298,7 +328,7 @@ tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rou
             createRuleForm();
         };
 
-        document.getElementById('addNewRule').textContent = '${ADD_RULE_BUTTON_TEXT}';
+        document.getElementById('addNewRule').textContent = ADD_RULE_BUTTON_TEXT;
 
         document.getElementById('cancelEdit').onclick = () => {
             document.getElementById('ruleModals').classList.remove('hidden');
@@ -349,23 +379,20 @@ tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rou
                 document.getElementById('addNewRule').classList.remove('hidden');
                 document.getElementById('configForm').classList.add('hidden');
             } catch (error) {
-                document.getElementById('message').textContent = '${MESSAGES.SAVE_ERROR}' + error.message;
+                document.getElementById('message').textContent = MESSAGES.SAVE_ERROR + error.message;
                 document.getElementById('message').className = 'mt-4 text-center font-bold text-red-600';
             }
         };
 
         // Load existing configuration
-        fetch('${API_ENDPOINTS.CONFIG}').then(response => response.json()).then(config => {
+        fetch(API_ENDPOINTS.CONFIG).then(response => response.json()).then(config => {
             if (config.rules && config.rules.length > 0) {
                 currentRules = config.rules.sort((a, b) => a.order - b.order);
-                ruleCounter = currentRules.length;
                 updateRuleModals();
-            } else {
-                ruleCounter = 0;
             }
         }).catch(error => {
             console.error('Error loading configuration:', error);
-            document.getElementById('message').textContent = '${MESSAGES.LOAD_ERROR}';
+            document.getElementById('message').textContent = MESSAGES.LOAD_ERROR;
             document.getElementById('message').className = 'mt-4 text-center font-bold text-red-600';
         });
     });
