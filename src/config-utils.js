@@ -11,32 +11,37 @@ import {
 export const uiScript = `
 <script>
     let ruleCounter = 0;
+    let dragSrcEl = null;
 
     const tooltips = ${JSON.stringify(FINGERPRINT_TOOLTIPS)};
 
-    function createRuleForm() {
+    function createRuleForm(rule = {}) {
         ruleCounter++;
         const ruleForm = document.createElement('div');
         ruleForm.className = 'bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4';
+        ruleForm.setAttribute('data-id', ruleCounter);
+        ruleForm.draggable = true;
         ruleForm.innerHTML = \`
-            <h3 class="text-lg font-semibold mb-4">Rule \${ruleCounter}</h3>
-            <div class="mb-4">
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleOrder\${ruleCounter}">
-                    ${LABELS.ORDER}
-                </label>
-                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleOrder\${ruleCounter}" name="rules[\${ruleCounter}].order" type="number" value="\${ruleCounter}" required>
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">Rule \${ruleCounter}</h3>
+                <div class="flex items-center">
+                    <span class="mr-2 cursor-move" draggable="true">☰</span>
+                    <button type="button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-1 px-2 rounded-l focus:outline-none focus:shadow-outline" onclick="moveRule(this, -1)">↑</button>
+                    <button type="button" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-1 px-2 rounded-r focus:outline-none focus:shadow-outline" onclick="moveRule(this, 1)">↓</button>
+                </div>
             </div>
+            <input type="hidden" name="rules[\${ruleCounter}].order" value="\${ruleCounter}">
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleName\${ruleCounter}">
                     ${LABELS.RULE_NAME}
                 </label>
-                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleName\${ruleCounter}" name="rules[\${ruleCounter}].name" type="text" required>
+                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleName\${ruleCounter}" name="rules[\${ruleCounter}].name" type="text" value="\${rule.name || ''}" required>
             </div>
             <div class="mb-4">
                 <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleDescription\${ruleCounter}">
                     ${LABELS.DESCRIPTION}
                 </label>
-                <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleDescription\${ruleCounter}" name="rules[\${ruleCounter}].description"></textarea>
+                <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleDescription\${ruleCounter}" name="rules[\${ruleCounter}].description">\${rule.description || ''}</textarea>
             </div>
             <div class="mb-4">
                 <h4 class="text-md font-semibold mb-2">Rate Limit</h4>
@@ -45,13 +50,13 @@ export const uiScript = `
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="limit\${ruleCounter}">
                             ${LABELS.REQUEST_LIMIT}
                         </label>
-                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="limit\${ruleCounter}" name="rules[\${ruleCounter}].rateLimit.limit" type="number" required>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="limit\${ruleCounter}" name="rules[\${ruleCounter}].rateLimit.limit" type="number" value="\${rule.rateLimit?.limit || ''}" required>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="period\${ruleCounter}">
                             ${LABELS.TIME_PERIOD}
                         </label>
-                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="period\${ruleCounter}" name="rules[\${ruleCounter}].rateLimit.period" type="number" required>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="period\${ruleCounter}" name="rules[\${ruleCounter}].rateLimit.period" type="number" value="\${rule.rateLimit?.period || ''}" required>
                     </div>
                 </div>
             </div>
@@ -62,13 +67,13 @@ export const uiScript = `
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="hostname\${ruleCounter}">
                             ${LABELS.HOSTNAME}
                         </label>
-                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="hostname\${ruleCounter}" name="rules[\${ruleCounter}].requestMatch.hostname" type="text" required>
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="hostname\${ruleCounter}" name="rules[\${ruleCounter}].requestMatch.hostname" type="text" value="\${rule.requestMatch?.hostname || ''}" required>
                     </div>
                     <div>
                         <label class="block text-gray-700 text-sm font-bold mb-2" for="path\${ruleCounter}">
                             ${LABELS.PATH}
                         </label>
-                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="path\${ruleCounter}" name="rules[\${ruleCounter}].requestMatch.path" type="text">
+                        <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="path\${ruleCounter}" name="rules[\${ruleCounter}].requestMatch.path" type="text" value="\${rule.requestMatch?.path || ''}">
                     </div>
                 </div>
             </div>
@@ -89,11 +94,85 @@ export const uiScript = `
                 Remove Rule
             </button>
         \`;
+        ruleForm.addEventListener('dragstart', handleDragStart, false);
+        ruleForm.addEventListener('dragenter', handleDragEnter, false);
+        ruleForm.addEventListener('dragover', handleDragOver, false);
+        ruleForm.addEventListener('dragleave', handleDragLeave, false);
+        ruleForm.addEventListener('drop', handleDrop, false);
+        ruleForm.addEventListener('dragend', handleDragEnd, false);
         document.getElementById('rulesContainer').appendChild(ruleForm);
+
+        // Populate fingerprint parameters if they exist
+        if (rule.fingerprint && rule.fingerprint.parameters) {
+            const fingerprintList = ruleForm.querySelector(\`#fingerprintList\${ruleCounter}\`);
+            rule.fingerprint.parameters.forEach(param => addToList(fingerprintList, param, ruleCounter));
+        }
+
+        updateRuleOrder();
     }
 
     function removeRule(button) {
-        button.closest('.bg-white').remove();
+        button.closest('[data-id]').remove();
+        updateRuleOrder();
+    }
+
+    function moveRule(button, direction) {
+        const ruleElement = button.closest('[data-id]');
+        if (direction === -1 && ruleElement.previousElementSibling) {
+            ruleElement.parentNode.insertBefore(ruleElement, ruleElement.previousElementSibling);
+        } else if (direction === 1 && ruleElement.nextElementSibling) {
+            ruleElement.parentNode.insertBefore(ruleElement.nextElementSibling, ruleElement);
+        }
+        updateRuleOrder();
+    }
+
+    function updateRuleOrder() {
+        document.querySelectorAll('#rulesContainer > div').forEach((rule, index) => {
+            rule.querySelector('input[name$="].order"]').value = index + 1;
+            rule.querySelector('h3').textContent = \`Rule \${index + 1}\`;
+        });
+    }
+
+    function handleDragStart(e) {
+        this.style.opacity = '0.4';
+        dragSrcEl = this;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', this.innerHTML);
+    }
+
+    function handleDragOver(e) {
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
+        e.dataTransfer.dropEffect = 'move';
+        return false;
+    }
+
+    function handleDragEnter(e) {
+        this.classList.add('bg-gray-200');
+    }
+
+    function handleDragLeave(e) {
+        this.classList.remove('bg-gray-200');
+    }
+
+    function handleDrop(e) {
+        if (e.stopPropagation) {
+            e.stopPropagation();
+        }
+        if (dragSrcEl != this) {
+            dragSrcEl.innerHTML = this.innerHTML;
+            this.innerHTML = e.dataTransfer.getData('text/html');
+        }
+        return false;
+    }
+
+    function handleDragEnd(e) {
+        this.style.opacity = '1';
+        document.querySelectorAll('#rulesContainer > div').forEach(function (item) {
+            item.classList.remove('bg-gray-200');
+        });
+        updateRuleOrder();
     }
 
     function addFingerprint(ruleIndex) {
@@ -114,7 +193,7 @@ export const uiScript = `
         list.appendChild(item);
 
         const tooltip = document.createElement('div');
-tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rounded shadow-lg';
+        tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rounded shadow-lg';
         tooltip.textContent = tooltips[value] || 'No description available';
         item.appendChild(tooltip);
 
@@ -123,7 +202,18 @@ tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rou
     }
 
     document.addEventListener('DOMContentLoaded', () => {
-        document.getElementById('addRule').onclick = createRuleForm;
+        document.getElementById('addRule').onclick = () => createRuleForm();
+
+        document.addEventListener('keydown', (e) => {
+            if (e.altKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                e.preventDefault();
+                const activeElement = document.activeElement;
+                const ruleElement = activeElement.closest('[data-id]');
+                if (ruleElement) {
+                    moveRule(activeElement, e.key === 'ArrowUp' ? -1 : 1);
+                }
+            }
+        });
 
         document.getElementById('configForm').onsubmit = async (e) => {
             e.preventDefault();
@@ -156,7 +246,6 @@ tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rou
                 }
             }
 
-            // Remove empty slots from the rules array and sort by order
             config.rules = config.rules.filter(Boolean).sort((a, b) => parseInt(a.order) - parseInt(b.order));
 
             try {
@@ -181,30 +270,13 @@ tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rou
         // Load existing configuration
         fetch('${API_ENDPOINTS.CONFIG}').then(response => response.json()).then(config => {
             if (config.rules && config.rules.length > 0) {
-                // Clear existing rules before populating
                 document.getElementById('rulesContainer').innerHTML = '';
                 ruleCounter = 0;
                 config.rules.forEach((rule) => {
-                    createRuleForm();
-                    document.getElementById(\`ruleName\${ruleCounter}\`).value = rule.name || '';
-                    document.getElementById(\`ruleDescription\${ruleCounter}\`).value = rule.description || '';
-                    for (const [section, values] of Object.entries(rule)) {
-                        for (const [key, value] of Object.entries(values)) {
-                            if (section === 'fingerprint' && key === 'parameters') {
-                                const list = document.getElementById(\`fingerprintList\${ruleCounter}\`);
-                                value.forEach(param => addToList(list, param, ruleCounter));
-                            } else {
-                                const inputName = \`rules[\${ruleCounter}].\${section}.\${key}\`;
-                                const input = document.querySelector(\`[name="\${inputName}"]\`);
-                                if (input) {
-                                    input.value = value;
-                                }
-                            }
-                        }
-                    }
+                    createRuleForm(rule);
                 });
             } else {
-                createRuleForm(); // Create an initial empty rule form
+createRuleForm();
             }
         }).catch(error => {
             console.error('Error loading configuration:', error);
@@ -212,5 +284,114 @@ tooltip.className = 'hidden absolute z-10 p-2 bg-gray-800 text-white text-sm rou
             document.getElementById('message').className = 'mt-4 text-center font-bold text-red-600';
         });
     });
+
+    // Helper function to get the next sibling Element
+    function getNextSibling(elem, selector) {
+        var sibling = elem.nextElementSibling;
+        if (!selector) return sibling;
+        while (sibling) {
+            if (sibling.matches(selector)) return sibling;
+            sibling = sibling.nextElementSibling;
+        }
+    };
+
+    // Helper function to get the previous sibling Element
+    function getPreviousSibling(elem, selector) {
+        var sibling = elem.previousElementSibling;
+        if (!selector) return sibling;
+        while (sibling) {
+            if (sibling.matches(selector)) return sibling;
+            sibling = sibling.previousElementSibling;
+        }
+    };
+
+    // Add event delegation for dynamically added elements
+    document.getElementById('rulesContainer').addEventListener('click', function(e) {
+        if (e.target && e.target.nodeName == "BUTTON") {
+            if (e.target.textContent === "↑") {
+                moveRule(e.target, -1);
+            } else if (e.target.textContent === "↓") {
+                moveRule(e.target, 1);
+            } else if (e.target.textContent === "Remove Rule") {
+                removeRule(e.target);
+            }
+        }
+    });
+
+    // Update the moveRule function to work with the new structure
+    function moveRule(button, direction) {
+        const ruleElement = button.closest('[data-id]');
+        if (direction === -1) {
+            const prevSibling = getPreviousSibling(ruleElement, '[data-id]');
+            if (prevSibling) {
+                ruleElement.parentNode.insertBefore(ruleElement, prevSibling);
+            }
+        } else if (direction === 1) {
+            const nextSibling = getNextSibling(ruleElement, '[data-id]');
+            if (nextSibling) {
+                ruleElement.parentNode.insertBefore(nextSibling, ruleElement);
+            }
+        }
+        updateRuleOrder();
+    }
+
+    // Update drag and drop handlers to work with the new structure
+    function handleDragStart(e) {
+        dragSrcEl = this;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/html', this.outerHTML);
+
+        this.classList.add('bg-gray-200');
+    }
+
+    function handleDragOver(e) {
+        if (e.preventDefault) {
+            e.preventDefault();
+        }
+        e.dataTransfer.dropEffect = 'move';
+        return false;
+    }
+
+    function handleDragEnter(e) {
+        this.classList.add('bg-blue-100');
+    }
+
+    function handleDragLeave(e) {
+        this.classList.remove('bg-blue-100');
+    }
+
+    function handleDrop(e) {
+        if (e.stopPropagation) {
+            e.stopPropagation();
+        }
+
+        if (dragSrcEl != this) {
+            this.parentNode.removeChild(dragSrcEl);
+            var dropHTML = e.dataTransfer.getData('text/html');
+            this.insertAdjacentHTML('beforebegin', dropHTML);
+            var dropElem = this.previousSibling;
+            addDnDHandlers(dropElem);
+        }
+        this.classList.remove('bg-blue-100');
+        updateRuleOrder();
+        return false;
+    }
+
+    function handleDragEnd(e) {
+        this.classList.remove('bg-gray-200');
+        updateRuleOrder();
+    }
+
+    function addDnDHandlers(elem) {
+        elem.addEventListener('dragstart', handleDragStart, false);
+        elem.addEventListener('dragenter', handleDragEnter, false)
+        elem.addEventListener('dragover', handleDragOver, false);
+        elem.addEventListener('dragleave', handleDragLeave, false);
+        elem.addEventListener('drop', handleDrop, false);
+        elem.addEventListener('dragend', handleDragEnd, false);
+    }
+
+    // Add drag and drop handlers to existing rules
+    document.querySelectorAll('#rulesContainer > div').forEach(addDnDHandlers);
 </script>
 `;

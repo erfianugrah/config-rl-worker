@@ -16,7 +16,7 @@ export const html = `
             <button type="button" id="addRule" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline mb-4">
                 ${ADD_RULE_BUTTON_TEXT}
             </button>
-            <div id="rulesContainer"></div>
+            <div id="rulesContainer" class="space-y-4"></div>
             <div class="flex items-center justify-between mt-6">
                 <button type="submit" class="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline">
                     ${SAVE_CONFIG_BUTTON_TEXT}
