@@ -182,108 +182,160 @@ function editRule(rule, index) {
     }
 
 function createRuleForm(rule = {}, editIndex = null) {
-    console.log('Creating rule form with rule:', JSON.stringify(rule, null, 2));
-    const ruleIndex = editIndex !== null ? editIndex : currentRules.length;
-    const ruleForm = document.createElement('div');
-    ruleForm.className = 'bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4';
-    ruleForm.setAttribute('data-id', ruleIndex);
-    ruleForm.innerHTML = \`
-        <div class="mb-4">
-            <h3 class="text-lg font-semibold">Rule \${ruleIndex + 1}</h3>
-        </div>
-        <input type="hidden" name="rules[\${ruleIndex}].order" value="\${ruleIndex + 1}">
-        <div class="mb-4">
-            <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleName\${ruleIndex}">
-                \${LABELS.RULE_NAME}
-            </label>
-            <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleName\${ruleIndex}" name="rules[\${ruleIndex}].name" type="text" required>
-        </div>
-        <div class="mb-4">
-            <label class="block text-gray-700 text-sm font-bold mb-2" for="ruleDescription\${ruleIndex}">
-                \${LABELS.DESCRIPTION}
-            </label>
-            <textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleDescription\${ruleIndex}" name="rules[\${ruleIndex}].description"></textarea>
-        </div>
-        <div class="mb-4">
-            <h4 class="text-md font-semibold mb-2">Rate Limit</h4>
-            <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="limit\${ruleIndex}">
-                        \${LABELS.REQUEST_LIMIT}
-                    </label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="limit\${ruleIndex}" name="rules[\${ruleIndex}].rateLimit.limit" type="number" required>
-                </div>
-                <div>
-                    <label class="block text-gray-700 text-sm font-bold mb-2" for="period\${ruleIndex}">
-                        \${LABELS.TIME_PERIOD}
-                    </label>
-                    <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="period\${ruleIndex}" name="rules[\${ruleIndex}].rateLimit.period" type="number" required>
-                </div>
-            </div>
-        </div>
-        <div class="mb-4">
-            <h4 class="text-md font-semibold mb-2">\${LABELS.REQUEST_MATCH}</h4>
-            <div id="requestMatchConditions\${ruleIndex}"></div>
-            <button type="button" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="addCondition(\${ruleIndex})">
-                Add Condition
-            </button>
-        </div>
-        <div class="mb-4">
-            <h4 class="text-md font-semibold mb-2">\${LABELS.FINGERPRINT_PARAMS}</h4>
-            <div class="mb-4">
-                <p class="text-sm text-gray-600">\${MESSAGES.CLIENT_IP_INCLUDED}</p>
-            </div>
-            <div>
-                <select id="fingerprintParam\${ruleIndex}" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2">
-                    \${FINGERPRINT_PARAMS.map((param) => \`<option value="\${param.value}">\${param.label}</option>\`).join('')}
-                </select>
-                <button type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="addFingerprint(\${ruleIndex})">Add</button>
-                <div id="fingerprintList\${ruleIndex}" class="mt-4 p-2 border rounded min-h-[100px]"></div>
-            </div>
-        </div>
-    \`;
-    document.getElementById('rulesContainer').appendChild(ruleForm);
+  console.log('Creating rule form with rule:', JSON.stringify(rule, null, 2));
+  const ruleIndex = editIndex !== null ? editIndex : currentRules.length;
+  const ruleForm = document.createElement('div');
+  ruleForm.className = 'bg-white shadow-md rounded px-8 pt-6 pb-8 mb-4';
+  ruleForm.setAttribute('data-id', ruleIndex);
+  ruleForm.innerHTML = '<div class="mb-4">' +
+    '<h3 class="text-lg font-semibold">Rule ' + (ruleIndex + 1) + '</h3>' +
+    '</div>' +
+    '<input type="hidden" name="rules[' + ruleIndex + '].order" value="' + (ruleIndex + 1) + '">' +
+    '<div class="mb-4">' +
+    '<label class="block text-gray-700 text-sm font-bold mb-2" for="ruleName' + ruleIndex + '">' +
+    LABELS.RULE_NAME +
+    '</label>' +
+    '<input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleName' + ruleIndex + '" name="rules[' + ruleIndex + '].name" type="text" required>' +
+    '</div>' +
+    '<div class="mb-4">' +
+    '<label class="block text-gray-700 text-sm font-bold mb-2" for="ruleDescription' + ruleIndex + '">' +
+    LABELS.DESCRIPTION +
+    '</label>' +
+    '<textarea class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="ruleDescription' + ruleIndex + '" name="rules[' + ruleIndex + '].description"></textarea>' +
+    '</div>' +
+    '<div class="mb-4">' +
+    '<h4 class="text-md font-semibold mb-2">Rate Limit</h4>' +
+    '<div class="grid grid-cols-2 gap-4">' +
+    '<div>' +
+    '<label class="block text-gray-700 text-sm font-bold mb-2" for="limit' + ruleIndex + '">' +
+    LABELS.REQUEST_LIMIT +
+    '</label>' +
+    '<input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="limit' + ruleIndex + '" name="rules[' + ruleIndex + '].rateLimit.limit" type="number" required>' +
+    '</div>' +
+    '<div>' +
+    '<label class="block text-gray-700 text-sm font-bold mb-2" for="period' + ruleIndex + '">' +
+    LABELS.TIME_PERIOD +
+    '</label>' +
+    '<input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" id="period' + ruleIndex + '" name="rules[' + ruleIndex + '].rateLimit.period" type="number" required>' +
+    '</div>' +
+    '</div>' +
+    '</div>' +
+    '<div class="mb-4">' +
+    '<h4 class="text-md font-semibold mb-2">' + LABELS.REQUEST_MATCH + '</h4>' +
+    '<div class="mb-2">' +
+    '<label class="inline-flex items-center">' +
+    '<span class="mr-2">Logic:</span>' +
+    '<select name="rules[' + ruleIndex + '].requestMatch.logic" class="form-select">' +
+    '<option value="AND" ' + ((rule.requestMatch && rule.requestMatch.logic === 'OR') ? '' : 'selected') + '>AND</option>' +
+    '<option value="OR" ' + ((rule.requestMatch && rule.requestMatch.logic === 'OR') ? 'selected' : '') + '>OR</option>' +
+    '</select>' +
+    '</label>' +
+    '</div>' +
+    '<div id="requestMatchConditions' + ruleIndex + '"></div>' +
+    '<button type="button" class="mt-2 bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="addCondition(' + ruleIndex + ')">' +
+    'Add Condition' +
+    '</button>' +
+    '</div>' +
+    '<div class="mb-4">' +
+    '<h4 class="text-md font-semibold mb-2">Action</h4>' +
+    '<select id="actionType' + ruleIndex + '" name="rules[' + ruleIndex + '].action.type" class="form-select mb-2" onchange="updateActionFields(' + ruleIndex + ')">' +
+    '<option value="log">Log</option>' +
+    '<option value="simulate">Simulate</option>' +
+    '<option value="block">Block (403)</option>' +
+    '<option value="rateLimit" selected>Rate Limit (429)</option>' +
+    '<option value="customResponse">Custom JSON Response</option>' +
+    '</select>' +
+    '<div id="actionFields' + ruleIndex + '"></div>' +
+    '</div>' +
+    '<div class="mb-4">' +
+    '<h4 class="text-md font-semibold mb-2">' + LABELS.FINGERPRINT_PARAMS + '</h4>' +
+    '<div class="mb-4">' +
+    '<p class="text-sm text-gray-600">' + MESSAGES.CLIENT_IP_INCLUDED + '</p>' +
+    '</div>' +
+    '<div>' +
+    '<select id="fingerprintParam' + ruleIndex + '" class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline mb-2">' +
+    FINGERPRINT_PARAMS.map((param) => '<option value="' + param.value + '">' + param.label + '</option>').join('') +
+    '</select>' +
+    '<button type="button" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline" onclick="addFingerprint(' + ruleIndex + ')">Add</button>' +
+    '<div id="fingerprintList' + ruleIndex + '" class="mt-4 p-2 border rounded min-h-[100px]"></div>' +
+    '</div>' +
+    '</div>';
+  document.getElementById('rulesContainer').appendChild(ruleForm);
 
-    console.log('Rule form created. Populating request match conditions...');
+  console.log('Rule form created. Populating request match conditions...');
 
-    // Populate request match conditions
-    const conditionsContainer = document.getElementById(\`requestMatchConditions\${ruleIndex}\`);
-    let conditions = [];
-    if (rule.requestMatch) {
-        if (Array.isArray(rule.requestMatch.conditions)) {
-            conditions = rule.requestMatch.conditions;
-        } else if (typeof rule.requestMatch === 'object') {
-            // Handle the case where conditions are stored as conditions[0], conditions[1], etc.
-            conditions = Object.keys(rule.requestMatch)
-                .filter(key => key.startsWith('conditions['))
-                .map(key => rule.requestMatch[key]);
-        }
+  // Populate request match conditions
+  const conditionsContainer = document.getElementById('requestMatchConditions' + ruleIndex);
+  let conditions = [];
+  if (rule.requestMatch) {
+    if (Array.isArray(rule.requestMatch.conditions)) {
+      conditions = rule.requestMatch.conditions;
+    } else if (typeof rule.requestMatch === 'object') {
+      // Handle the case where conditions are stored as conditions[0], conditions[1], etc.
+      conditions = Object.keys(rule.requestMatch)
+        .filter(key => key.startsWith('conditions['))
+        .map(key => rule.requestMatch[key]);
     }
+  }
 
-    if (conditions.length > 0) {
-        console.log('Found conditions:', conditions);
-        conditions.forEach((condition, index) => {
-            console.log(\`Adding condition \${index}:\`, condition);
-            const conditionHTML = createConditionFields(ruleIndex, index, condition);
-            conditionsContainer.insertAdjacentHTML('beforeend', conditionHTML);
-        });
-    } else {
-        console.log('No existing conditions found.');
+  if (conditions.length > 0) {
+    console.log('Found conditions:', conditions);
+    conditions.forEach((condition, index) => {
+      console.log('Adding condition ' + index + ':', condition);
+      const conditionHTML = createConditionFields(ruleIndex, index, condition);
+      conditionsContainer.insertAdjacentHTML('beforeend', conditionHTML);
+    });
+  } else {
+    console.log('No existing conditions found.');
+  }
+
+  // Populate form fields
+  ruleForm.querySelector('[name="rules[' + ruleIndex + '].name"]').value = rule.name || '';
+  ruleForm.querySelector('[name="rules[' + ruleIndex + '].description"]').value = rule.description || '';
+  ruleForm.querySelector('[name="rules[' + ruleIndex + '].rateLimit.limit"]').value = rule.rateLimit?.limit || '';
+  ruleForm.querySelector('[name="rules[' + ruleIndex + '].rateLimit.period"]').value = rule.rateLimit?.period || '';
+
+  // Populate fingerprint parameters if they exist
+  if (rule.fingerprint && rule.fingerprint.parameters) {
+    const fingerprintList = ruleForm.querySelector('#fingerprintList' + ruleIndex);
+    rule.fingerprint.parameters.forEach(param => addToList(fingerprintList, param, ruleIndex));
+  }
+
+  // Populate action fields
+  if (rule.action) {
+    ruleForm.querySelector('[name="rules[' + ruleIndex + '].action.type"]').value = rule.action.type;
+    updateActionFields(ruleIndex, rule.action.type);
+    if (rule.action.type === 'customResponse') {
+      ruleForm.querySelector('[name="rules[' + ruleIndex + '].action.statusCode"]').value = rule.action.statusCode;
+      ruleForm.querySelector('[name="rules[' + ruleIndex + '].action.body"]').value = rule.action.body;
     }
+  } else {
+    updateActionFields(ruleIndex, 'rateLimit');
+  }
 
-    // Populate form fields
-    ruleForm.querySelector(\`[name="rules[\${ruleIndex}].name"]\`).value = rule.name || '';
-    ruleForm.querySelector(\`[name="rules[\${ruleIndex}].description"]\`).value = rule.description || '';
-    ruleForm.querySelector(\`[name="rules[\${ruleIndex}].rateLimit.limit"]\`).value = rule.rateLimit?.limit || '';
-    ruleForm.querySelector(\`[name="rules[\${ruleIndex}].rateLimit.period"]\`).value = rule.rateLimit?.period || '';
+  console.log('Rule form population complete.');
+}
 
-    // Populate fingerprint parameters if they exist
-    if (rule.fingerprint && rule.fingerprint.parameters) {
-        const fingerprintList = ruleForm.querySelector(\`#fingerprintList\${ruleIndex}\`);
-        rule.fingerprint.parameters.forEach(param => addToList(fingerprintList, param, ruleIndex));
-    }
+function updateActionFields(ruleIndex, actionType) {
+  const actionFields = document.getElementById('actionFields' + ruleIndex);
+  const selectedType = actionType || document.getElementById('actionType' + ruleIndex).value;
 
-    console.log('Rule form population complete.');
+  let fieldsHTML = '';
+  switch (selectedType) {
+    case 'customResponse':
+      fieldsHTML = '<div class="mb-2">' +
+        '<label class="block text-gray-700 text-sm font-bold mb-2" for="customStatusCode' + ruleIndex + '">Status Code:</label>' +
+        '<input type="number" id="customStatusCode' + ruleIndex + '" name="rules[' + ruleIndex + '].action.statusCode" class="form-input" required>' +
+        '</div>' +
+        '<div class="mb-2">' +
+        '<label class="block text-gray-700 text-sm font-bold mb-2" for="customResponseBody' + ruleIndex + '">Response Body (JSON):</label>' +
+        '<textarea id="customResponseBody' + ruleIndex + '" name="rules[' + ruleIndex + '].action.body" class="form-textarea" rows="4" required></textarea>' +
+        '</div>';
+      break;
+    // Add cases for other action types if they require additional fields
+  }
+
+  actionFields.innerHTML = fieldsHTML;
 }
 
 function createConditionFields(ruleIndex, conditionIndex, condition = {}) {
