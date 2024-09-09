@@ -271,7 +271,6 @@ function createRuleForm(rule = {}, editIndex = null) {
     if (Array.isArray(rule.requestMatch.conditions)) {
       conditions = rule.requestMatch.conditions;
     } else if (typeof rule.requestMatch === 'object') {
-      // Handle the case where conditions are stored as conditions[0], conditions[1], etc.
       conditions = Object.keys(rule.requestMatch)
         .filter(key => key.startsWith('conditions['))
         .map(key => rule.requestMatch[key]);
@@ -339,44 +338,54 @@ function updateActionFields(ruleIndex, actionType) {
 }
 
 function createConditionFields(ruleIndex, conditionIndex, condition = {}) {
-    console.log(\`Creating condition fields for rule \${ruleIndex}, condition \${conditionIndex}:\`, condition);
-    return \`
-        <div class="grid grid-cols-3 gap-4 mb-4" id="condition\${ruleIndex}_\${conditionIndex}">
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="field\${ruleIndex}_\${conditionIndex}">
-                    \${LABELS.CONDITION_FIELD}
-                </label>
-                <select class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        id="field\${ruleIndex}_\${conditionIndex}"
-                        name="rules[\${ruleIndex}].requestMatch.conditions[\${conditionIndex}].field" required>
-                    \${REQUEST_MATCH_FIELDS.map(field =>
-                        \`<option value="\${field.value}" \${condition.field === field.value ? 'selected' : ''}>\${field.label}</option>\`
-                    ).join('')}
-                </select>
-            </div>
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="operator\${ruleIndex}_\${conditionIndex}">
-                    \${LABELS.CONDITION_OPERATOR}
-                </label>
-                <select class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                        id="operator\${ruleIndex}_\${conditionIndex}"
-                        name="rules[\${ruleIndex}].requestMatch.conditions[\${conditionIndex}].operator" required>
-                    \${REQUEST_MATCH_OPERATORS.map(op =>
-                        \`<option value="\${op.value}" \${condition.operator === op.value ? 'selected' : ''}>\${op.label}</option>\`
-                    ).join('')}
-                </select>
-            </div>
-            <div>
-                <label class="block text-gray-700 text-sm font-bold mb-2" for="value\${ruleIndex}_\${conditionIndex}">
-                    \${LABELS.CONDITION_VALUE}
-                </label>
-                <input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline"
-                       id="value\${ruleIndex}_\${conditionIndex}"
-                       name="rules[\${ruleIndex}].requestMatch.conditions[\${conditionIndex}].value"
-                       type="text" value="\${condition.value || ''}" required>
-            </div>
-        </div>
-    \`;
+    console.log('Creating condition fields for rule ' + ruleIndex + ', condition ' + conditionIndex + ':', condition);
+    return '' +
+        '<div class="grid grid-cols-3 gap-4 mb-4" id="condition' + ruleIndex + '_' + conditionIndex + '">' +
+            '<div>' +
+                '<label class="block text-gray-700 text-sm font-bold mb-2" for="field' + ruleIndex + '_' + conditionIndex + '">' +
+                    LABELS.CONDITION_FIELD +
+                '</label>' +
+                '<select class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" ' +
+                        'id="field' + ruleIndex + '_' + conditionIndex + '" ' +
+                        'name="rules[' + ruleIndex + '].requestMatch.conditions[' + conditionIndex + '].field" ' +
+                        'onchange="handleFieldChange(' + ruleIndex + ', ' + conditionIndex + ')" required>' +
+                    REQUEST_MATCH_FIELDS.map(field =>
+                        '<option value="' + field.value + '" ' + (condition.field === field.value ? 'selected' : '') + '>' + field.label + '</option>'
+                    ).join('') +
+                '</select>' +
+            '</div>' +
+            '<div>' +
+                '<label class="block text-gray-700 text-sm font-bold mb-2" for="operator' + ruleIndex + '_' + conditionIndex + '">' +
+                    LABELS.CONDITION_OPERATOR +
+                '</label>' +
+                '<select class="shadow border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" ' +
+                        'id="operator' + ruleIndex + '_' + conditionIndex + '" ' +
+                        'name="rules[' + ruleIndex + '].requestMatch.conditions[' + conditionIndex + '].operator" required>' +
+                    REQUEST_MATCH_OPERATORS.map(op =>
+                        '<option value="' + op.value + '" ' + (condition.operator === op.value ? 'selected' : '') + '>' + op.label + '</option>'
+                    ).join('') +
+                '</select>' +
+            '</div>' +
+            '<div>' +
+                '<label class="block text-gray-700 text-sm font-bold mb-2" for="value' + ruleIndex + '_' + conditionIndex + '">' +
+                    LABELS.CONDITION_VALUE +
+                '</label>' +
+                '<input class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline" ' +
+                       'id="value' + ruleIndex + '_' + conditionIndex + '" ' +
+                       'name="rules[' + ruleIndex + '].requestMatch.conditions[' + conditionIndex + '].value" ' +
+                       'type="text" value="' + (condition.value || '') + '" required>' +
+            '</div>' +
+        '</div>';
+}
+function handleFieldChange(ruleIndex, conditionIndex) {
+    const fieldSelect = document.getElementById('field' + ruleIndex + '_' + conditionIndex);
+    const valueInput = document.getElementById('value' + ruleIndex + '_' + conditionIndex);
+
+    if (fieldSelect.value === 'body') {
+        valueInput.placeholder = 'Enter a regex pattern to match against the request body';
+    } else {
+        valueInput.placeholder = '';
+    }
 }
 
     function addCondition(ruleIndex) {
